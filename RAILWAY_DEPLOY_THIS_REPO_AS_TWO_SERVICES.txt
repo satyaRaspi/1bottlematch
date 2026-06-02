@@ -1,0 +1,15 @@
+This repository is a monorepo.
+
+Do not deploy the repository root as one Railway service.
+
+Create two Railway services from the same GitHub repo:
+
+1. Backend Service
+   Root Directory: /backend
+
+2. Frontend Service
+   Root Directory: /frontend
+   Environment variable:
+   API_TARGET=https://your-backend-service.up.railway.app
+
+See docs/RAILWAY_DEPLOYMENT.md

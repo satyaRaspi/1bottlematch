@@ -1,0 +1,16 @@
+{
+  "name": "bottle-signature-frontend",
+  "version": "1.5.7",
+  "description": "Node.js interface for Bottle Signature Core",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.3",
+    "http-proxy-middleware": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

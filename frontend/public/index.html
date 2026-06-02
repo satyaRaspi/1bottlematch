@@ -1,0 +1,226 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bottle Signature Core</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="./styles.css" rel="stylesheet" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Truflux Bottle Signature Core</h1>
+      <p>3-axis physical signature generation and tolerance-based bottle identification</p>
+    </div>
+    <span class="version">v1.5.7</span>
+  </header>
+
+  <main>
+    <section class="card hero">
+      <h2>Controlled Capture Profile</h2>
+      <p class="captureNotice">This version assumes all bottle photos are captured at the same height, same camera distance, same background, same lighting and same 3-axis setup. Geometry remains the primary hard-gate, while ML assists feature extraction through optional ONNX segmentation, color clustering, texture, gradient profile and cross-view consistency.</p>
+      <h2>Core Functions</h2>
+      <div class="grid three">
+        <div class="mini">
+          <strong>1. Build Signature</strong>
+          <p>Capture front, side and top photos to generate a physical bottle signature.</p>
+        </div>
+        <div class="mini">
+          <strong>2. Register Bottle</strong>
+          <p>Store brand, SKU and the master signature in the signature repository.</p>
+        </div>
+        <div class="mini">
+          <strong>3. Identify Bottle</strong>
+          <p>Recreate the 3-axis signature during inspection and match using strict controlled geometry, score, color, category, primary identity and ML-assisted feature gates.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="card">
+        <h2>Register Master Bottle Signature</h2>
+        <p class="captureNotice">Required input: Front photo + Side photo + Top photo. Optional measurements are hidden under Advanced.</p>
+        <form id="registerForm">
+          <div class="grid two">
+            <label>Brand *<input name="brand" required placeholder="Example: Royal Stag"></label>
+            <label>Product Name *<input name="product_name" required placeholder="Example: Barrel Select"></label>
+            <label>SKU Code<input name="sku_code" placeholder="Internal SKU"></label>
+            <label>Quantity ML<input name="quantity_ml" type="number" step="0.01" placeholder="750"></label>
+            <label>Color<input name="color" placeholder="Amber / Clear / Brown"></label>
+            <label>Barcode / Excise Code<input name="barcode" placeholder="Optional"></label>
+          </div>
+
+          <h3>3-Axis Capture — Required</h3>
+          <div class="grid three">
+            <label>Front Image<input name="front_image" type="file" accept="image/*" required></label>
+            <label>Side Image<input name="side_image" type="file" accept="image/*" required></label>
+            <label>Top Image<input name="top_image" type="file" accept="image/*" required></label>
+          </div>
+
+          <details class="advanced">
+            <summary>Advanced calibrated measurements — optional</summary>
+            <p class="hint">These fields are not required. The bottle signature is generated from the required 3-axis photos. Use measurements only when a load cell, reference scale, depth sensor, or manual measurement is available.</p>
+            <div class="grid three">
+              <label>Weight (g)<input name="weight_g" type="number" step="0.01"></label>
+              <label>Height (mm)<input name="height_mm" type="number" step="0.01"></label>
+              <label>Width (mm)<input name="width_mm" type="number" step="0.01"></label>
+              <label>Depth (mm)<input name="depth_mm" type="number" step="0.01"></label>
+              <label>Neck Diameter (mm)<input name="neck_diameter_mm" type="number" step="0.01"></label>
+              <label>Cap Height (mm)<input name="cap_height_mm" type="number" step="0.01"></label>
+              <label>Label Top Offset (mm)<input name="label_top_offset_mm" type="number" step="0.01"></label>
+              <label>Label Width (mm)<input name="label_width_mm" type="number" step="0.01"></label>
+              <label>Label Height (mm)<input name="label_height_mm" type="number" step="0.01"></label>
+            </div>
+          </details>
+
+          <label>Notes<textarea name="notes" placeholder="Any notes about seal, packaging, source, batch etc."></textarea></label>
+          <button type="submit">Register Bottle Signature</button>
+        </form>
+        <pre id="registerOutput"></pre>
+      </div>
+
+      <div class="card">
+        <h2>Identify Bottle</h2>
+        <p class="captureNotice">Select the registered bottle to compare against, then upload Front photo + Side photo + Top photo.</p>
+        <form id="identifyForm">
+          <div class="selectorBlock">
+            <label for="compareBottleSelect">Compare Against Registered Bottle *</label>
+            <select name="bottle_id" id="compareBottleSelect" class="alwaysVisibleSelect" required>
+              <option value="">Loading registered bottles...</option>
+            </select>
+            <div id="bottleDropdownStatus" class="helperText">Loading registered bottle list from backend...</div>
+            <button type="button" class="secondary smallBtn" onclick="loadBottles()">Refresh Registered Bottles</button>
+            <div id="processingModeNote" class="helperText">Fast Mode active: OCR and real DL are off unless enabled in environment variables.</div>
+          </div>
+          <h3>3-Axis Capture — Required</h3>
+          <div class="grid three">
+            <label>Front Image<input name="front_image" type="file" accept="image/*" required></label>
+            <label>Side Image<input name="side_image" type="file" accept="image/*" required></label>
+            <label>Top Image<input name="top_image" type="file" accept="image/*" required></label>
+          </div>
+
+          <details class="advanced">
+            <summary>Advanced identification inputs — optional</summary>
+            <p class="hint">These are not required for identification. The 3-axis photos are the required input. Use measurements only when available to improve confidence.</p>
+            <div class="grid three">
+              <label>Weight (g)<input name="weight_g" type="number" step="0.01"></label>
+              <label>Height (mm)<input name="height_mm" type="number" step="0.01"></label>
+              <label>Width (mm)<input name="width_mm" type="number" step="0.01"></label>
+              <label>Depth (mm)<input name="depth_mm" type="number" step="0.01"></label>
+              <label>Neck Diameter (mm)<input name="neck_diameter_mm" type="number" step="0.01"></label>
+              <label>Cap Height (mm)<input name="cap_height_mm" type="number" step="0.01"></label>
+              <label>Label Top Offset (mm)<input name="label_top_offset_mm" type="number" step="0.01"></label>
+              <label>Label Width (mm)<input name="label_width_mm" type="number" step="0.01"></label>
+              <label>Label Height (mm)<input name="label_height_mm" type="number" step="0.01"></label>
+              <label>Liquid Volume ML<input name="liquid_volume_ml" type="number" step="0.01"></label>
+              <label>SKU Code<input name="sku_code"></label>
+              <label>Barcode / Excise Code<input name="barcode"></label>
+            </div>
+          </details>
+
+          <button type="submit">Compare and Determine Match</button>
+        </form>
+
+        <div id="matchCard" class="match hidden"></div>
+        <pre id="identifyOutput"></pre>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sectionHeader">
+        <h2>Registered Bottle Signatures</h2>
+        <button id="createDemoDataBtn" class="secondary" type="button">Create Demo Data</button>
+        <button id="refreshBtn" class="secondary">Refresh</button>
+      </div>
+      <div id="bottleList"></div>
+    </section>
+
+
+
+    <section class="card">
+      <div class="sectionHeader">
+        <h2>Processing Bottle Match Records</h2>
+        <button id="refreshProcessingMatchesBtn" class="secondary">Refresh Records</button>
+      </div>
+      <p>Every processing dialog result is stored with a Processing Bottle Match ID.</p>
+      <div id="processingMatchesList"></div>
+    </section>
+
+    <section class="card">
+      <div class="sectionHeader">
+        <h2>Audit Logs</h2>
+        <div>
+          <button id="refreshLogsBtn" class="secondary">Refresh Logs</button>
+          <button id="clearLogsBtn" class="secondary">Clear Logs</button>
+        </div>
+      </div>
+      <p>All major activities are captured: registration, identification, comparison, listing and delete actions.</p>
+      <div id="logsList"></div>
+    </section>
+
+    <section class="card">
+      <h2>Signature Parameters</h2>
+      <p>The backend supports 50+ parameters across geometry, closure, label, material, liquid, base and sensor measurements.</p>
+      <button id="loadParamsBtn" class="secondary">Show Parameters</button>
+      <div id="paramList"></div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+
+  <div id="processingDialog" class="modalOverlay hidden">
+    <div class="processingModal">
+      <div class="modalHeader">
+        <div>
+          <h2>Processing Bottle Match</h2>
+          <p id="dialogSubtitle">Comparing uploaded 3-axis photos against selected registered bottle.</p>
+        </div>
+        <button id="dialogCloseBtn" class="closeBtn" type="button">×</button>
+      </div>
+
+      <div id="dialogFinalResult" class="finalResult pending">
+        <strong>Processing...</strong>
+        <span>Waiting for comparison result.</span>
+      </div>
+      <div id="processingMatchIdBanner" class="processingIdBanner hidden"></div>
+
+      <div class="processSteps" id="processSteps">
+        <div class="step active" data-step="capture">1. Validating 3-axis photo input</div>
+        <div class="step" data-step="signature">2. Recreating live bottle signature</div>
+        <div class="step" data-step="compare">3. Comparing registered vs test sample</div>
+        <div class="step" data-step="gates">4. Applying preliminary, geometry, color, DL and ML gates</div>
+        <div class="step" data-step="decision">5. Determining final result</div>
+      </div>
+
+      <section class="dialogPanel full liveStatusPanel">
+        <h3>Real-Time Processing Status</h3>
+        <div id="processingStatusFeed" class="processingStatusFeed"></div>
+      </section>
+
+      <div class="dialogGrid">
+        <section class="dialogPanel">
+          <h3>Gate Results</h3>
+          <div id="gateResults">Processing gate checks...</div>
+        </section>
+
+        <section class="dialogPanel">
+          <h3>Summary</h3>
+          <div id="dialogSummary">Processing summary...</div>
+        </section>
+      </div>
+
+      <section class="dialogPanel full">
+        <h3>Parameter Comparison</h3>
+        <p class="hint">Each parameter is calculated from the uploaded bottle photos and compared against the selected registered bottle signature.</p>
+        <div id="parameterComparisonTable" class="paramTableWrap">Processing parameters...</div>
+      </section>
+
+      <div class="modalFooter">
+        <button id="dialogCloseBtnBottom" class="secondary" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

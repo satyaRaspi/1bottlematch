@@ -1,0 +1,41 @@
+# Python
+backend/venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Node
+frontend/node_modules/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local DB / runtime files
+backend/bottle_signatures.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Runtime uploads / generated artifacts
+uploads/
+tmp/
+temp/
+
+# Environment files
+.env
+.env.local
+backend/.env
+frontend/.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
