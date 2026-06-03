@@ -5,14 +5,14 @@ from typing import Dict, List, Tuple
 from signature_schema import PARAMETERS, default_tolerances, default_weights
 from ml_features import cosine_similarity_from_signatures, euclidean_similarity_from_signatures, ML_VECTOR_KEYS
 
-# Tightened matching rules - v1.5.7
+# Tightened matching rules - v1.6.0
 MIN_MATCH_SCORE = 0.90
 MIN_COMPARED_PARAMETERS = 24
 MIN_PRIMARY_GATE_PASS_RATE = 0.82
 MIN_CATEGORY_PASS_RATE = 0.70
 MAX_MAJOR_PARAMETER_FAILURES = 4
 
-# Color is now stricter than v1.5.7
+# Color is now stricter than v1.6.0
 COLOR_MAX_RELATIVE_DIFFERENCE = 0.16
 COLOR_MIN_PASS_RATE = 0.82
 
@@ -163,7 +163,7 @@ def color_gate(master: Dict[str, float], observed: Dict[str, float]) -> Dict:
     """
     Hard no-match rule:
     If comparable color characteristics are materially different, the result is NO_MATCH.
-    v1.5.7 tightens this using both individual failure and pass-rate logic.
+    v1.6.0 tightens this using both individual failure and pass-rate logic.
     """
     compared = []
     failed = []

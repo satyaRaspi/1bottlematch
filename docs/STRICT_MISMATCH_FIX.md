@@ -1,4 +1,4 @@
-# Strict Mismatch Fix — v1.5.7
+# Strict Mismatch Fix — v1.6.0
 
 This patch addresses false-positive matching between visually distinct objects, such as:
 

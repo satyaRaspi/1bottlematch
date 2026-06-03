@@ -1,4 +1,4 @@
-# Overlay Visualization — v1.5.7
+# Overlay Visualization — v1.6.0
 
 This version generates visual overlays for each 3-axis bottle image.
 

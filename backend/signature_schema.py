@@ -1,7 +1,7 @@
 
 """
 Bottle Signature Schema
-Version: 1.5.7
+Version: 1.6.0
 
 This module defines the 50+ physical signature parameters used to identify bottles.
 Each parameter is stored as a numeric value where possible, and compared with
@@ -95,7 +95,7 @@ PARAMETERS: List[ParameterSpec] = [
 ]
 
 
-# ML-assisted feature parameters appended in v1.5.7.
+# ML-assisted feature parameters appended in v1.6.0.
 ML_ASSISTED_PARAMETER_SPECS = []
 for view in ["front", "side", "top"]:
     for cluster_idx in [1, 2]:
@@ -125,7 +125,7 @@ ML_ASSISTED_PARAMETER_SPECS.extend([
 PARAMETERS.extend(ML_ASSISTED_PARAMETER_SPECS)
 
 
-# Light deep-learning segmentation parameters - v1.5.7.
+# Light deep-learning segmentation parameters - v1.6.0.
 DL_SEGMENTATION_PARAMETER_SPECS = []
 for view_prefix, view_label in [("", "front"), ("side_", "side"), ("top_", "top")]:
     DL_SEGMENTATION_PARAMETER_SPECS.extend([
@@ -141,7 +141,7 @@ for view_prefix, view_label in [("", "front"), ("side_", "side"), ("top_", "top"
 PARAMETERS.extend(DL_SEGMENTATION_PARAMETER_SPECS)
 
 
-# Distinctive object appearance parameters — v1.5.7.
+# Distinctive object appearance parameters — v1.6.0.
 DISTINCTIVE_APPEARANCE_PARAMETER_SPECS = [
     ParameterSpec("opaque_surface_score", "Opaque surface score", "appearance", "ratio", 8.0, 0.08, "High for painted/opaque bottles; low for transparent bottles"),
     ParameterSpec("transparent_surface_score", "Transparent surface score", "appearance", "ratio", 8.0, 0.08, "High for transparent plastic/glass bottles"),

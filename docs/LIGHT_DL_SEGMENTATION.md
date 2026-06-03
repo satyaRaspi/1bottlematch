@@ -1,4 +1,4 @@
-# Light Deep-Learning Segmentation — v1.5.7
+# Light Deep-Learning Segmentation — v1.6.0
 
 Adds optional ONNX Runtime CPU segmentation with OpenCV GrabCut fallback.
 

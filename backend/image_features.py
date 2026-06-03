@@ -1,7 +1,7 @@
 
 """
 Image-derived Bottle Feature Extraction
-Version: 1.5.7
+Version: 1.6.0
 
 This module deliberately avoids pure image matching. It extracts measurable,
 repeatable physical proxies from front/side/top images and converts them into

@@ -1,4 +1,4 @@
-# Demo Data — v1.5.7
+# Demo Data — v1.6.0
 
 This version adds a Create Demo Data button.
 
@@ -18,7 +18,6 @@ The demo records help test:
 
 - registered bottle dropdown
 - strict mismatch gates
-- OCR text gate
 - no-match behavior
 - audit logs
 

@@ -1,7 +1,7 @@
 
 """
 Light Deep-Learning Segmentation Layer
-Version: 1.5.7
+Version: 1.6.0
 """
 from __future__ import annotations
 

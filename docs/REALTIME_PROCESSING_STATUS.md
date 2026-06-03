@@ -1,4 +1,4 @@
-# Real-Time Processing Status — v1.5.7
+# Real-Time Processing Status — v1.6.0
 
 The Processing Bottle Match dialog now includes a scrolling live status frame.
 

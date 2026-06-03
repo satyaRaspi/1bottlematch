@@ -1,4 +1,4 @@
-# Dropdown UI Visibility Fix — v1.5.7
+# Dropdown UI Visibility Fix — v1.6.0
 
 This patch forces the registered bottle dropdown to remain visible in the Identify Bottle frame.
 

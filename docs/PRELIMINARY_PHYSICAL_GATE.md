@@ -1,4 +1,4 @@
-# Preliminary Physical Characteristics Gate — v1.5.7
+# Preliminary Physical Characteristics Gate — v1.6.0
 
 This version adds a preliminary object-observation gate.
 

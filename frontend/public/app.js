@@ -187,6 +187,7 @@ function gateBadge(ok) {
 }
 
 function renderGateResults(match) {
+  const captureAi = match.capture_ai_gate;
   const distinctiveAppearance = match.distinctive_appearance_gate;
   const preliminaryPhysical = match.preliminary_physical_gate;
   const controlledGeometry = match.controlled_geometry_gate;
@@ -199,6 +200,7 @@ function renderGateResults(match) {
 
   return `
     <div class="gateList">
+      <div class="gateItem">${gateBadge(captureAi && captureAi.passed)} <strong>AI Capture / View / Object Class Gate</strong><small>${captureAi ? `Observed Quality: ${captureAi.observed_average_quality_score ?? "-"} | Registered: ${captureAi.master_object_class || "-"} | Observed: ${captureAi.observed_object_class || "-"}` : "-"}</small></div>
       <div class="gateItem">${gateBadge(distinctiveAppearance && distinctiveAppearance.passed)} <strong>Distinctive Object Appearance Gate</strong><small>${distinctiveAppearance ? `Pass Rate: ${Math.round((distinctiveAppearance.pass_rate || 0) * 100)}% | Appearance Parameters: ${distinctiveAppearance.compared_appearance_parameters || 0}` : "-"}</small></div>
       <div class="gateItem">${gateBadge(preliminaryPhysical && preliminaryPhysical.passed)} <strong>Preliminary Physical Characteristics Gate</strong><small>${preliminaryPhysical ? `Pass Rate: ${Math.round((preliminaryPhysical.pass_rate || 0) * 100)}% | Parameters: ${preliminaryPhysical.compared_physical_parameters || 0}` : "-"}</small></div>
       <div class="gateItem">${gateBadge(controlledGeometry && controlledGeometry.passed)} <strong>Controlled Geometry Gate</strong><small>${controlledGeometry ? `Pass Rate: ${Math.round((controlledGeometry.pass_rate || 0) * 100)}% | Mode: ${controlledGeometry.mode || "-"}` : "-"}</small></div>
@@ -212,6 +214,38 @@ function renderGateResults(match) {
   `;
 }
 
+
+function renderCaptureAiSummary(data) {
+  const ai = data.observed_capture_ai || data.capture_ai || {};
+  const gate = data.capture_ai_match || (data.match ? data.match.capture_ai_gate : null);
+  if (!ai || !Object.keys(ai).length) return "";
+
+  const reasons = ai.reasons || [];
+  return `
+    <div class="overlaySection">
+      <h4>AI Capture Quality + View Validation</h4>
+      <div class="dialogGrid">
+        <div class="dialogPanel">
+          <p><strong>Capture OK:</strong> ${ai.capture_ok ? "YES" : "NO"}</p>
+          <p><strong>Recapture Required:</strong> ${ai.recapture_required ? "YES" : "NO"}</p>
+          <p><strong>Average Quality:</strong> ${ai.average_quality_score ?? "-"}</p>
+          <p><strong>Dominant Object Class:</strong> ${ai.dominant_object_class || "unknown"}</p>
+          <p><strong>Object Class Consistent:</strong> ${ai.object_class_consistent ? "YES" : "NO"}</p>
+        </div>
+        <div class="dialogPanel">
+          <p><strong>Gate:</strong> ${gate ? (gate.passed ? "PASS" : "FAIL") : "-"}</p>
+          <p><strong>Registered Class:</strong> ${gate ? gate.master_object_class : "-"}</p>
+          <p><strong>Observed Class:</strong> ${gate ? gate.observed_object_class : "-"}</p>
+          <p><strong>Reasons:</strong> ${(gate && gate.reasons && gate.reasons.length) ? gate.reasons.join(", ") : (reasons.join(", ") || "-")}</p>
+        </div>
+      </div>
+      <details>
+        <summary>View per-axis AI details</summary>
+        <pre>${escapeHtml(JSON.stringify(ai.views || {}, null, 2))}</pre>
+      </details>
+    </div>
+  `;
+}
 
 function renderOverlayAssets(data) {
   const visual = data.visual_assets || (data.full_result ? data.full_result.visual_assets : null) || {};
@@ -312,6 +346,7 @@ function renderStoredProcessingMatchDialog(item) {
     score_percent: item.score_percent,
     compared_parameters: item.compared_parameters,
     no_match_reasons: item.no_match_reasons,
+    capture_ai_gate: item.gate_results ? item.gate_results.capture_ai_gate : (item.capture_ai_match || null),
     distinctive_appearance_gate: item.gate_results ? item.gate_results.distinctive_appearance_gate : null,
     preliminary_physical_gate: item.gate_results ? item.gate_results.preliminary_physical_gate : null,
     controlled_geometry_gate: item.gate_results ? item.gate_results.controlled_geometry_gate : null,
@@ -332,6 +367,9 @@ function renderStoredProcessingMatchDialog(item) {
     observed_signature: item.observed_signature,
     match,
     visual_assets: full.visual_assets || item.visual_assets || {},
+    master_capture_ai: full.master_capture_ai || item.master_capture_ai || {},
+    observed_capture_ai: full.observed_capture_ai || item.observed_capture_ai || {},
+    capture_ai_match: full.capture_ai_match || item.capture_ai_match || {},
     processing_trace: full.processing_trace || item.processing_trace || []
   };
 
@@ -394,7 +432,7 @@ function updateProcessingDialogWithResult(data) {
   }
 
   document.getElementById("gateResults").innerHTML = renderGateResults(m);
-  document.getElementById("dialogSummary").innerHTML = renderDialogSummary(data) + renderOverlayAssets(data);
+  document.getElementById("dialogSummary").innerHTML = renderDialogSummary(data) + renderCaptureAiSummary(data) + renderOverlayAssets(data);
   renderProcessingTrace(data.processing_trace);
   document.getElementById("parameterComparisonTable").innerHTML = renderParameterComparison(m.details);
   completeProcessingSteps();
@@ -424,6 +462,16 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
   try {
     const data = await postForm("/api/bottles/register", e.target);
     out.textContent = pretty(data);
+    const capBox = document.getElementById("captureAiPreview");
+    if (capBox && data.capture_ai) {
+      capBox.innerHTML = `
+        <strong>Stored AI Capture Profile</strong>
+        <p><strong>Capture OK:</strong> ${data.capture_ai.capture_ok ? "YES" : "NO"}</p>
+        <p><strong>Average Quality:</strong> ${data.capture_ai.average_quality_score}</p>
+        <p><strong>Dominant Object Class:</strong> ${data.capture_ai.dominant_object_class || "unknown"}</p>
+        <p><strong>Reasons:</strong> ${(data.capture_ai.reasons || []).join(", ") || "-"}</p>
+      `;
+    }
     await loadBottles();
     await loadLogs();
     await loadProcessingMatches();
@@ -491,7 +539,8 @@ document.getElementById("identifyForm").addEventListener("submit", async (e) => 
         <p><strong>Decision:</strong> ${m.decision}</p>
         <p><strong>Score:</strong> ${m.score_percent}% | <strong>Compared Parameters:</strong> ${m.compared_parameters}</p>
         <p><strong>No Match Reasons:</strong> ${(m.no_match_reasons && m.no_match_reasons.length) ? m.no_match_reasons.join(", ") : "-"}</p>
-        <p><strong>Appearance:</strong> ${m.distinctive_appearance_gate ? (m.distinctive_appearance_gate.passed ? "PASS" : "FAIL") : "-"} | 
+        <p><strong>AI Capture:</strong> ${m.capture_ai_gate ? (m.capture_ai_gate.passed ? "PASS" : "FAIL") : "-"} | 
+           <strong>Appearance:</strong> ${m.distinctive_appearance_gate ? (m.distinctive_appearance_gate.passed ? "PASS" : "FAIL") : "-"} | 
            <strong>Preliminary Physical:</strong> ${m.preliminary_physical_gate ? (m.preliminary_physical_gate.passed ? "PASS" : "FAIL") : "-"} | 
            <strong>Controlled Geometry:</strong> ${m.controlled_geometry_gate ? (m.controlled_geometry_gate.passed ? "PASS" : "FAIL") : "-"} | 
            <strong>Color Gate:</strong> ${m.color_gate ? (m.color_gate.passed ? "PASS" : "FAIL") : "-"} | 
@@ -515,11 +564,44 @@ async function loadRuntimeConfig() {
     const cfg = await apiGet("/runtime/config", 5000);
     const el = document.getElementById("processingModeNote");
     if (el) {
-      el.textContent = `Mode: ${cfg.processing_mode}. OCR: ${cfg.enable_ocr ? "ON" : "OFF"}. Overlays: ${cfg.enable_overlays ? "ON" : "OFF"}. Real DL: ${cfg.enable_real_dl ? "ON" : "OFF"}. Max image dimension: ${cfg.max_image_dim}.`;
+      el.textContent = `Mode: ${cfg.processing_mode}. Overlays: ${cfg.enable_overlays ? "ON" : "OFF"}. Real DL: ${cfg.enable_real_dl ? "ON" : "OFF"}. Max image dimension: ${cfg.max_image_dim}.`;
     }
   } catch (err) {
     const el = document.getElementById("processingModeNote");
     if (el) el.textContent = "Could not load runtime config: " + err.message;
+  }
+}
+
+async function previewCaptureAi() {
+  const form = document.getElementById("registerForm");
+  const box = document.getElementById("captureAiPreview");
+  if (!form || !box) return;
+
+  box.textContent = "Running AI capture quality and view validation...";
+  try {
+    const fd = new FormData();
+    ["front_image", "side_image", "top_image"].forEach(name => {
+      const input = form.querySelector(`input[name="${name}"]`);
+      if (input && input.files && input.files.length > 0) {
+        fd.append(name, input.files[0]);
+      }
+    });
+
+    const res = await fetch(apiUrl("/signature/capture-ai-preview"), { method: "POST", body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(formatApiError(data));
+
+    box.innerHTML = `
+      <strong>AI Capture Check Completed</strong>
+      <p><strong>Capture OK:</strong> ${data.capture_ok ? "YES" : "NO"}</p>
+      <p><strong>Recapture Required:</strong> ${data.recapture_required ? "YES" : "NO"}</p>
+      <p><strong>Average Quality:</strong> ${data.average_quality_score}</p>
+      <p><strong>Dominant Object Class:</strong> ${data.dominant_object_class || "unknown"}</p>
+      <p><strong>Reasons:</strong> ${(data.reasons || []).join(", ") || "-"}</p>
+      <details><summary>Per-axis details</summary><pre>${escapeHtml(JSON.stringify(data.views || {}, null, 2))}</pre></details>
+    `;
+  } catch (err) {
+    box.innerHTML = `<strong>AI capture check failed</strong><p>${escapeHtml(err.message)}</p>`;
   }
 }
 
@@ -699,6 +781,9 @@ async function clearLogs() {
   await loadLogs();
 }
 
+
+const previewCaptureAiBtn = document.getElementById("previewCaptureAiBtn");
+if (previewCaptureAiBtn) previewCaptureAiBtn.addEventListener("click", previewCaptureAi);
 
 const createDemoDataBtn = document.getElementById("createDemoDataBtn");
 if (createDemoDataBtn) createDemoDataBtn.addEventListener("click", createDemoData);

@@ -1,4 +1,4 @@
-# Railway Deployment Guide — Bottle Signature Core v1.5.7
+# Railway Deployment Guide — Bottle Signature Core v1.6.0
 
 This project is a monorepo:
 
@@ -21,7 +21,7 @@ rmdir /s /q .git
 git init
 git branch -M main
 git add .
-git commit -m "Initial commit - Bottle Signature Core v1.5.7"
+git commit -m "Initial commit - Bottle Signature Core v1.6.0"
 git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPO.git
 git push -u origin main
 ```

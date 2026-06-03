@@ -1,6 +1,6 @@
-# OCR Removed — v1.5.7
+# OCR Removed — v1.6.0
 
-OCR has been removed from this build.
+OCR is fully removed from this clean build.
 
 Removed:
 
@@ -13,16 +13,4 @@ Removed:
 - `/ocr/status`
 - `/signature/text-preview`
 
-Reason:
-
-OCR added environment complexity and slowed processing. The app now focuses on:
-
-- physical signature generation
-- object appearance gates
-- geometry matching
-- color/material matching
-- ML-assisted features
-- optional overlay visualization
-- demo data
-
-No Tesseract installation is required in this build.
+No OCR or Tesseract installation is required.

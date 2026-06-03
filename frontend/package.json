@@ -1,6 +1,6 @@
 {
   "name": "bottle-signature-frontend",
-  "version": "1.5.7",
+  "version": "1.6.0",
   "description": "Node.js interface for Bottle Signature Core",
   "main": "server.js",
   "scripts": {

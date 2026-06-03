@@ -1,4 +1,4 @@
-# ML-Assisted Feature Extraction — v1.5.7
+# ML-Assisted Feature Extraction — v1.6.0
 
 This version adds lightweight CPU-only ML-assisted feature extraction while keeping the physical signature engine as the core.
 

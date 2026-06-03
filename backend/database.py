@@ -34,7 +34,7 @@ def init_db():
             tolerances_json TEXT,
             weights_json TEXT,
             image_assets_json TEXT,
-            ocr_text_json TEXT,
+            capture_ai_json TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -66,6 +66,9 @@ def init_db():
             parameter_details_json TEXT,
             full_result_json TEXT,
             visual_assets_json TEXT,
+            master_capture_ai_json TEXT,
+            observed_capture_ai_json TEXT,
+            capture_ai_match_json TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -74,6 +77,14 @@ def init_db():
             conn.execute("ALTER TABLE bottles ADD COLUMN image_assets_json TEXT")
         if not _column_exists(conn, 'processing_bottle_matches', 'visual_assets_json'):
             conn.execute("ALTER TABLE processing_bottle_matches ADD COLUMN visual_assets_json TEXT")
+        if not _column_exists(conn, 'bottles', 'capture_ai_json'):
+            conn.execute("ALTER TABLE bottles ADD COLUMN capture_ai_json TEXT")
+        if not _column_exists(conn, 'processing_bottle_matches', 'master_capture_ai_json'):
+            conn.execute("ALTER TABLE processing_bottle_matches ADD COLUMN master_capture_ai_json TEXT")
+        if not _column_exists(conn, 'processing_bottle_matches', 'observed_capture_ai_json'):
+            conn.execute("ALTER TABLE processing_bottle_matches ADD COLUMN observed_capture_ai_json TEXT")
+        if not _column_exists(conn, 'processing_bottle_matches', 'capture_ai_match_json'):
+            conn.execute("ALTER TABLE processing_bottle_matches ADD COLUMN capture_ai_match_json TEXT")
         conn.commit()
 
 
@@ -83,8 +94,8 @@ def insert_bottle(data: Dict) -> int:
         cur = conn.execute("""
         INSERT INTO bottles
         (brand, product_name, sku_code, quantity_ml, color, barcode, notes,
-         signature_json, tolerances_json, weights_json, image_assets_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         signature_json, tolerances_json, weights_json, image_assets_json, capture_ai_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             data.get("brand"),
             data.get("product_name"),
@@ -97,6 +108,7 @@ def insert_bottle(data: Dict) -> int:
             json.dumps(data.get("tolerances", {})),
             json.dumps(data.get("weights", {})),
             json.dumps(data.get("image_assets", {})),
+            json.dumps(data.get("capture_ai", {}), default=str),
         ))
         conn.commit()
         return int(cur.lastrowid)
@@ -106,6 +118,13 @@ def update_bottle_assets(bottle_id: int, image_assets: Dict) -> None:
     init_db()
     with get_conn() as conn:
         conn.execute("UPDATE bottles SET image_assets_json = ? WHERE id = ?", (json.dumps(image_assets or {}), bottle_id))
+        conn.commit()
+
+
+def update_bottle_capture_ai(bottle_id: int, capture_ai: Dict) -> None:
+    init_db()
+    with get_conn() as conn:
+        conn.execute("UPDATE bottles SET capture_ai_json = ? WHERE id = ?", (json.dumps(capture_ai or {}, default=str), bottle_id))
         conn.commit()
 
 
@@ -173,8 +192,9 @@ def insert_processing_match(data: Dict) -> str:
         INSERT INTO processing_bottle_matches
         (processing_match_id, bottle_id, brand, product_name, decision, score_percent,
          compared_parameters, no_match_reasons_json, request_json, observed_signature_json,
-         gate_results_json, parameter_details_json, full_result_json, visual_assets_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         gate_results_json, parameter_details_json, full_result_json, visual_assets_json,
+         master_capture_ai_json, observed_capture_ai_json, capture_ai_match_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             data.get("processing_match_id"),
             data.get("bottle_id"),
@@ -190,6 +210,9 @@ def insert_processing_match(data: Dict) -> str:
             json.dumps(data.get("parameter_details", []), default=str),
             json.dumps(data.get("full_result", {}), default=str),
             json.dumps(data.get("visual_assets", {}), default=str),
+            json.dumps(data.get("master_capture_ai", {}), default=str),
+            json.dumps(data.get("observed_capture_ai", {}), default=str),
+            json.dumps(data.get("capture_ai_match", {}), default=str),
         ))
         conn.commit()
     return str(data.get("processing_match_id"))
@@ -226,6 +249,7 @@ def _json_or_empty(value, fallback):
 
 def _row_to_dict(row) -> Dict:
     image_assets_raw = row["image_assets_json"] if _has_column(row, "image_assets_json") else "{}"
+    capture_ai_raw = row["capture_ai_json"] if _has_column(row, "capture_ai_json") else "{}"
     return {
         "id": row["id"],
         "brand": row["brand"],
@@ -239,6 +263,7 @@ def _row_to_dict(row) -> Dict:
         "tolerances": json.loads(row["tolerances_json"] or "{}"),
         "weights": json.loads(row["weights_json"] or "{}"),
         "image_assets": _json_or_empty(image_assets_raw, "{}"),
+        "capture_ai": _json_or_empty(capture_ai_raw, "{}"),
         "created_at": row["created_at"],
     }
 
@@ -256,6 +281,9 @@ def _log_to_dict(row) -> Dict:
 
 
 def _processing_match_to_dict(row) -> Dict:
+    master_capture_ai_raw = row["master_capture_ai_json"] if _has_column(row, "master_capture_ai_json") else "{}"
+    observed_capture_ai_raw = row["observed_capture_ai_json"] if _has_column(row, "observed_capture_ai_json") else "{}"
+    capture_ai_match_raw = row["capture_ai_match_json"] if _has_column(row, "capture_ai_match_json") else "{}"
     return {
         "id": row["id"],
         "processing_match_id": row["processing_match_id"],
@@ -272,5 +300,8 @@ def _processing_match_to_dict(row) -> Dict:
         "parameter_details": json.loads(row["parameter_details_json"] or "[]"),
         "full_result": json.loads(row["full_result_json"] or "{}"),
         "visual_assets": json.loads(row["visual_assets_json"] or "{}"),
+        "master_capture_ai": _json_or_empty(master_capture_ai_raw, "{}"),
+        "observed_capture_ai": _json_or_empty(observed_capture_ai_raw, "{}"),
+        "capture_ai_match": _json_or_empty(capture_ai_match_raw, "{}"),
         "created_at": row["created_at"],
     }

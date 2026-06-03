@@ -11,15 +11,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from database import init_db, insert_bottle, update_bottle_assets, list_bottles, get_bottle, delete_bottle, insert_log, list_logs, clear_logs, insert_processing_match, list_processing_matches, get_processing_match
+from database import init_db, insert_bottle, update_bottle_assets, update_bottle_capture_ai, list_bottles, get_bottle, delete_bottle, insert_log, list_logs, clear_logs, insert_processing_match, list_processing_matches, get_processing_match
 from image_features import build_signature
 from matcher import find_best_match, compare_signatures
 from signature_schema import PARAMETERS, default_tolerances, default_weights
 from dl_segmentation import status as dl_segmentation_status
 from overlay_visualization import ASSETS_DIR, create_asset_set
 from runtime_config import config_payload, detailed_parameter_trace
+from ai_quality import analyze_capture_set, compare_capture_ai
 
-APP_VERSION = "1.5.7"
+APP_VERSION = "1.6.0"
 
 app = FastAPI(
     title="Bottle Signature Core API",
@@ -63,6 +64,24 @@ def _blank_to_none(value):
 
 def _truthy(value) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "y", "on", "checked"}
+
+
+def _demo_capture_ai(kind: str):
+    class_map = {
+        "clear_soda": "transparent_bottle",
+        "yellow_flask": "yellow_opaque_bottle",
+        "amber_liquor": "amber_glass_bottle",
+    }
+    return {
+        "capture_ok": True,
+        "recapture_required": False,
+        "average_quality_score": 0.86,
+        "views": {},
+        "duplicate_view_checks": [],
+        "object_class_consistent": True,
+        "dominant_object_class": class_map.get(kind, "unknown"),
+        "reasons": [],
+    }
 
 
 def _demo_signature(kind: str):
@@ -186,8 +205,10 @@ def health():
             "Detailed per-check scrolling processing trace",
             "Distinctive object appearance hard gate",
             "Create demo registered bottle data",
-            "Fast processing mode with optional OCR/overlays/real-DL toggles",
-            "Register-time bottle text analysis and unstructured OCR storage"
+            "AI capture quality assistant",
+            "AI front/side/top view validation",
+            "AI object class detection",
+            "Fast processing mode with optional overlays/real-DL toggles"
         ],
         "architecture": "physical_signature_engine_plus_overlay_visualization_plus_real_time_status_plus_preliminary_physical_gate",
     }
@@ -262,6 +283,40 @@ def processing_match_detail(processing_match_id: str):
 
 
 
+
+
+@app.post("/signature/capture-ai-preview")
+async def capture_ai_preview(
+    front_image: Optional[UploadFile] = File(None),
+    side_image: Optional[UploadFile] = File(None),
+    top_image: Optional[UploadFile] = File(None),
+):
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        front = await _save_upload(front_image, folder, "front")
+        side = await _save_upload(side_image, folder, "side")
+        top = await _save_upload(top_image, folder, "top")
+
+        if not (front and side and top):
+            raise HTTPException(status_code=400, detail="Upload all three images for AI capture/view validation.")
+
+        capture_ai = analyze_capture_set(front, side, top)
+
+    insert_log(
+        "CAPTURE_AI_PREVIEW",
+        "SUCCESS" if capture_ai.get("capture_ok") else "RECAPTURE_REQUIRED",
+        "AI capture quality and view validation completed",
+        request={"front_image": bool(front), "side_image": bool(side), "top_image": bool(top)},
+        response={
+            "capture_ok": capture_ai.get("capture_ok"),
+            "average_quality_score": capture_ai.get("average_quality_score"),
+            "dominant_object_class": capture_ai.get("dominant_object_class"),
+            "reasons": capture_ai.get("reasons"),
+        },
+    )
+    return capture_ai
+
+
 @app.post("/signature/build")
 async def build_signature_preview(
     front_image: Optional[UploadFile] = File(None),
@@ -285,6 +340,8 @@ async def build_signature_preview(
         front = await _save_upload(front_image, folder, "front")
         side = await _save_upload(side_image, folder, "side")
         top = await _save_upload(top_image, folder, "top")
+
+        observed_capture_ai = analyze_capture_set(front, side, top)
 
         manual = _manual_dict(
             weight_g=weight_g,
@@ -341,6 +398,8 @@ async def register_bottle(
         side = await _save_upload(side_image, folder, "side")
         top = await _save_upload(top_image, folder, "top")
 
+        observed_capture_ai = analyze_capture_set(front, side, top)
+
         manual = _manual_dict(
             weight_g=weight_g,
             height_mm=height_mm,
@@ -356,6 +415,7 @@ async def register_bottle(
             barcode=barcode,
         )
 
+        capture_ai = analyze_capture_set(front, side, top)
         signature = build_signature(front, side, top, manual)
 
         if len(signature) < 8:
@@ -373,9 +433,11 @@ async def register_bottle(
             "tolerances": default_tolerances(),
             "weights": default_weights(),
             "image_assets": {},
+            "capture_ai": capture_ai,
         })
         image_assets = create_asset_set(front, side, top, "bottles", str(bottle_id))
         update_bottle_assets(bottle_id, image_assets)
+        update_bottle_capture_ai(bottle_id, capture_ai)
 
     response = {
         "id": bottle_id,
@@ -383,6 +445,7 @@ async def register_bottle(
         "signature_parameter_count": len(signature),
         "signature": signature,
         "image_assets": image_assets,
+        "capture_ai": capture_ai,
     }
     insert_log(
         "REGISTER_BOTTLE",
@@ -415,6 +478,9 @@ def _safe_bottle_summary(b):
         "barcode": b.get("barcode") or "",
         "signature_parameter_count": len(b.get("signature") or {}),
         "image_assets": b.get("image_assets") or {},
+        "capture_ai": b.get("capture_ai") or {},
+        "object_class": ((b.get("capture_ai") or {}).get("dominant_object_class") or "unknown"),
+        "capture_quality": ((b.get("capture_ai") or {}).get("average_quality_score") or None),
         "created_at": b.get("created_at") or "",
     }
 
@@ -437,6 +503,7 @@ def create_demo_data():
             "barcode": "890000000001",
             "notes": demo_marker,
             "signature": _demo_signature("clear_soda"),
+            "capture_ai": _demo_capture_ai("clear_soda"),
         },
         {
             "brand": "Demo Cello",
@@ -447,6 +514,7 @@ def create_demo_data():
             "barcode": "890000000002",
             "notes": demo_marker,
             "signature": _demo_signature("yellow_flask"),
+            "capture_ai": _demo_capture_ai("yellow_flask"),
         },
         {
             "brand": "Demo Amber",
@@ -457,6 +525,7 @@ def create_demo_data():
             "barcode": "890000000003",
             "notes": demo_marker,
             "signature": _demo_signature("amber_liquor"),
+            "capture_ai": _demo_capture_ai("amber_liquor"),
         },
     ]
 
@@ -478,6 +547,7 @@ def create_demo_data():
             "tolerances": default_tolerances(),
             "weights": default_weights(),
             "image_assets": {},
+            "capture_ai": item.get("capture_ai", {}),
         })
         created.append({"id": bottle_id, "sku_code": item["sku_code"], "brand": item["brand"], "product_name": item["product_name"]})
 
@@ -558,6 +628,8 @@ async def identify_bottle(
         front = await _save_upload(front_image, folder, "front")
         side = await _save_upload(side_image, folder, "side")
         top = await _save_upload(top_image, folder, "top")
+
+        observed_capture_ai = analyze_capture_set(front, side, top)
 
         manual = _manual_dict(
             weight_g=weight_g,
@@ -646,6 +718,8 @@ async def compare_with_bottle(
         if not (front and side and top):
             raise HTTPException(status_code=400, detail="Upload all three required 3-axis photos: front image, side image, and top image.")
 
+        observed_capture_ai = analyze_capture_set(front, side, top)
+
         manual = _manual_dict(
             weight_g=weight_g,
             height_mm=height_mm,
@@ -664,6 +738,13 @@ async def compare_with_bottle(
         }
 
     match = compare_signatures(master["signature"], observed, master["tolerances"], master["weights"])
+    master_capture_ai = master.get("capture_ai") or {}
+    capture_ai_match = compare_capture_ai(master_capture_ai, observed_capture_ai)
+
+    if not capture_ai_match.get("passed"):
+        match.setdefault("no_match_reasons", []).append("AI capture quality / view / object-class gate failed")
+        match["decision"] = "NO_MATCH"
+    match["capture_ai_gate"] = capture_ai_match
 
     request_payload = {
         "bottle_id": bottle_id,
@@ -674,6 +755,7 @@ async def compare_with_bottle(
     }
 
     gate_results = {
+        "capture_ai_gate": match.get("capture_ai_gate"),
         "distinctive_appearance_gate": match.get("distinctive_appearance_gate"),
         "preliminary_physical_gate": match.get("preliminary_physical_gate"),
         "controlled_geometry_gate": match.get("controlled_geometry_gate"),
@@ -703,6 +785,7 @@ async def compare_with_bottle(
 
     # Gate-level status
     gate_steps = [
+        ("capture_ai", "AI Capture Quality / View / Object Class Gate", match.get("capture_ai_gate")),
         ("distinctive_appearance", "Distinctive Object Appearance Gate", match.get("distinctive_appearance_gate")),
         ("physical_observation", "Preliminary Physical Characteristics Gate", match.get("preliminary_physical_gate")),
         ("controlled_geometry", "Controlled Geometry Gate", match.get("controlled_geometry_gate")),
@@ -801,6 +884,9 @@ async def compare_with_bottle(
         "product_name": master["product_name"],
         "observed_signature": observed,
         "visual_assets": visual_assets,
+        "master_capture_ai": master_capture_ai,
+        "observed_capture_ai": observed_capture_ai,
+        "capture_ai_match": capture_ai_match,
         "processing_trace": processing_trace,
         "match": match,
     }
@@ -820,6 +906,9 @@ async def compare_with_bottle(
         "parameter_details": match.get("details"),
         "full_result": response,
         "visual_assets": visual_assets,
+        "master_capture_ai": master_capture_ai,
+        "observed_capture_ai": observed_capture_ai,
+        "capture_ai_match": capture_ai_match,
     })
 
     insert_log(

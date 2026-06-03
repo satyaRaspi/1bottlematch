@@ -1,6 +1,6 @@
 
 """
-ML-Assisted Feature Extraction v1.5.7
+ML-Assisted Feature Extraction v1.6.0
 CPU-only feature extraction that supports the physical bottle signature engine.
 """
 from __future__ import annotations

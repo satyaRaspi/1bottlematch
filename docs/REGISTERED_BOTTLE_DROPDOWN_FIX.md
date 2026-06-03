@@ -1,4 +1,4 @@
-# Registered Bottle Dropdown Fix — v1.5.7
+# Registered Bottle Dropdown Fix — v1.6.0
 
 This version fixes the dropdown staying at "Loading registered bottles..."
 

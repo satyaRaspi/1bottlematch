@@ -1,4 +1,4 @@
-# Detailed Scrolling Processing Status — v1.5.7
+# Detailed Scrolling Processing Status — v1.6.0
 
 This version expands the scrolling processing status feed.
 

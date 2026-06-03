@@ -1,4 +1,4 @@
-# Registered Bottle Dropdown Troubleshooting — v1.5.7
+# Registered Bottle Dropdown Troubleshooting — v1.6.0
 
 If the Identify Bottle dropdown does not show registered bottles:
 

@@ -1,4 +1,4 @@
-# Real Model Segmentation — v1.5.7
+# Real Model Segmentation — v1.6.0
 
 This build supports true model-based segmentation.
 

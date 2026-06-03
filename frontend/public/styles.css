@@ -687,3 +687,33 @@ select#compareBottleSelect {
 }
 
 
+
+
+.aiQualityBox {
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(239, 246, 255, 0.85);
+  margin: 12px 0;
+}
+
+.textPreviewBox {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.textPreviewBox pre {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 10px;
+  border-radius: 8px;
+}
